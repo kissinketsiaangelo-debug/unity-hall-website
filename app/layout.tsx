@@ -54,6 +54,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'Unity Hall JCR', url: 'https://unityhall.knust.edu.gh' }],
   creator: 'Unity Hall Junior Common Room',
   publisher: 'Unity Hall KNUST',
+  metadataBase: new URL('https://unityhall.vercel.app'),
   robots: {
     index: true,
     follow: true,
