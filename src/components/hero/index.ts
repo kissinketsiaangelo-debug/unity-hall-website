@@ -1,0 +1,1 @@
+export { TwinTowersHero } from './TwinTowersHero';

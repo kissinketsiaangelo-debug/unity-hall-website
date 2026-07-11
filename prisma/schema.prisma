@@ -1,0 +1,889 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  maintenanceRequests MaintenanceRequest[]
+  amenityBookings AmenityBooking[]
+  donations     Donation[]
+  mentorshipMatches MentorshipMatch[] @relation("Mentor")
+  mentorshipMatchesAsMentee MentorshipMatch[] @relation("Mentee")
+  rsvps             EventRSVP[]
+  helpdeskTickets   HelpdeskTicket[]
+  suggestions       Suggestion[]
+  lostFoundItems    LostFoundItem[]
+  roommateProfile   RoommateProfile?
+  forumPosts        ForumPost[]
+  forumComments     ForumComment[]
+  semesterCheckIns  SemesterCheckIn[]
+  pastQuestions     PastQuestion[]
+  incidentReports   IncidentReport[]
+  disciplineCases   DisciplineCase[] @relation("StudentDiscipline")
+  disciplineFiled   DisciplineCase[] @relation("FiledBy")
+  pollsCreated      Poll[]
+  votes             Vote[]
+  complaints        Complaint[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  contiScore        ContiScore?
+  studyStreak       StudyStreak?
+  emergencyResponses EmergencyResponse[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model MaintenanceRequest {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String             @db.Text
+  category    MaintenanceCategory
+  priority    Priority           @default(MEDIUM)
+  status      RequestStatus      @default(PENDING)
+  roomNumber  String?
+  block       Block              @default(BLOCK_A)
+  floor       Int?
+  images      String[]
+  assignedTo  String?
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model AmenityBooking {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amenity     AmenityType
+  date        DateTime
+  startTime   DateTime
+  endTime     DateTime
+  purpose     String?
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Donation {
+  id              String           @id @default(cuid())
+  userId          String?
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  amount          Decimal          @db.Decimal(12, 2)
+  currency        String           @default("GHS")
+  method          PaymentMethod
+  transactionId   String?          @unique
+  status          DonationStatus   @default(PENDING)
+  purpose         DonationPurpose
+  isAnonymous     Boolean          @default(false)
+  donorName       String?
+  donorEmail      String?
+  donorPhone      String?
+  receiptSent     Boolean          @default(false)
+  receiptNumber   String?          @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model MentorshipMatch {
+  id          String              @id @default(cuid())
+  mentorId    String
+  mentor      User                @relation("Mentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  menteeId    String
+  mentee      User                @relation("Mentee", fields: [menteeId], references: [id], onDelete: Cascade)
+  status      MentorshipStatus    @default(PENDING)
+  pillar      MentorshipPillar
+  goals       String              @db.Text
+  matchedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([mentorId, menteeId])
+}
+
+model Event {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  description   String   @db.Text
+  date          DateTime
+  endDate       DateTime?
+  location      String
+  category      String
+  image         String?
+  rsvpLink      String?
+  isFeatured    Boolean  @default(false)
+  isPublic      Boolean  @default(true)
+  maxAttendees  Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rsvps         EventRSVP[]
+}
+
+model EventRSVP {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  email     String
+  phone     String?
+  guests    Int      @default(0)
+  status    RSVPStatus @default(CONFIRMED)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, email])
+}
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  source    String   @default("website")
+  status    SubStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+}
+
+model GalleryImage {
+  id          String   @id @default(cuid())
+  url         String
+  caption     String?
+  category    String
+  year        Int?
+  photographer String?
+  isFeatured  Boolean  @default(false)
+  order       Int      @default(0)
+  tags        String[]
+  createdAt   DateTime @default(now())
+}
+
+model Leadership {
+  id          String   @id @default(cuid())
+  name        String
+  role        String
+  category    String
+  image       String?
+  bio         String   @db.Text
+  term        String?
+  contact     Json?
+  socialLinks Json?
+  isCurrent   Boolean  @default(true)
+  order       Int      @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  RESIDENT
+  ALUMNI
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum MaintenanceCategory {
+  PLUMBING
+  ELECTRICAL
+  CARPENTRY
+  CLEANING
+  SECURITY
+  HVAC
+  STRUCTURAL
+  OTHER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  EMERGENCY
+}
+
+enum RequestStatus {
+  PENDING
+  ACKNOWLEDGED
+  IN_PROGRESS
+  WAITING_PARTS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum Block {
+  BLOCK_A
+  BLOCK_B
+  ANNEX
+  FLATS
+  COMMON
+}
+
+enum AmenityType {
+  BASKETBALL_COURT
+  BADMINTON_COURT
+  STUDY_ROOM
+  JCR
+  GAMES_ROOM
+  GYM
+  LAUNDRY
+  PARKING
+  ROOFTOP
+  CHAPEL
+  MOSQUE
+  KITCHEN
+  RADIO_STUDIO
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentMethod {
+  MOBILE_MONEY
+  CARD
+  BANK_TRANSFER
+  CASH
+  CRYPTO
+  USSD
+}
+
+enum DonationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum DonationPurpose {
+  EXPANSION_FUND
+  WASHROOM_RENOVATION
+  WATER_SUPPLY
+  ROOF_REPAIRS
+  JCR_RENOVATION
+  SCHOLARSHIP_FUND
+  GENERAL
+  EMERGENCY_RELIEF
+}
+
+enum MentorshipStatus {
+  PENDING
+  MATCHED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum MentorshipPillar {
+  ACADEMIC
+  CAREER
+  LEADERSHIP
+  PERSONAL_GROWTH
+}
+
+enum RSVPStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  NO_SHOW
+}
+
+enum SubStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+  COMPLAINED
+}
+
+model HelpdeskTicket {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject     String
+  description String   @db.Text
+  category    HelpdeskCategory @default(OTHER)
+  priority    Priority @default(MEDIUM)
+  status      TicketStatus @default(OPEN)
+  assignedTo  String?
+  images      String[]
+  resolution  String?  @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Suggestion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String   @db.Text
+  category    SuggestionCategory @default(OTHER)
+  status      SuggestionStatus @default(PENDING)
+  votes       Int      @default(0)
+  implementedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LostFoundItem {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type        LostFoundType
+  title       String
+  description String   @db.Text
+  location    String
+  dateLost    DateTime
+  images      String[]
+  status      LostFoundStatus @default(REPORTED)
+  claimedById String?
+  claimedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RoommateProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sleepSchedule   String
+  studyHabits     String
+  cleanliness     Int
+  quietHours      String
+  bio             String   @db.Text
+  course          String?
+  yearOfStudy     Int?
+  interests       String[]
+  preferredBlock  Block?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  matchesAsProfile1 RoommateMatch[] @relation("MatchProfile1")
+  matchesAsProfile2 RoommateMatch[] @relation("MatchProfile2")
+}
+
+model RoommateMatch {
+  id         String   @id @default(cuid())
+  profile1Id String
+  profile2Id String
+  score      Float
+  status     MatchStatus @default(PENDING)
+  matchedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  profile1 RoommateProfile @relation("MatchProfile1", fields: [profile1Id], references: [id], onDelete: Cascade)
+  profile2 RoommateProfile @relation("MatchProfile2", fields: [profile2Id], references: [id], onDelete: Cascade)
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String   @db.Text
+  category  ForumCategory @default(GENERAL)
+  tags      String[]
+  isPinned  Boolean  @default(false)
+  likes     Int      @default(0)
+  comments  ForumComment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ForumComment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SemesterCheckIn {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semester   String
+  academicYear String
+  checkInAt  DateTime @default(now())
+  checkOutAt DateTime?
+  location   Json?
+  status     CheckInStatus @default(IN_HALL)
+  createdAt  DateTime @default(now())
+}
+
+model PastQuestion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseCode  String
+  courseName  String
+  year        Int
+  examType    ExamType @default(MAIN_EXAM)
+  fileUrl     String
+  description String?
+  downloads   Int      @default(0)
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model IncidentReport {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        IncidentType
+  description String   @db.Text
+  location    String
+  images      String[]
+  status      IncidentStatus @default(REPORTED)
+  routedTo    String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  disciplineCases DisciplineCase[]
+}
+
+model DisciplineCase {
+  id          String   @id @default(cuid())
+  incidentId  String?
+  incident    IncidentReport? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  studentId   String
+  student     User     @relation("StudentDiscipline", fields: [studentId], references: [id], onDelete: Cascade)
+  charges     String   @db.Text
+  hearingDate DateTime?
+  verdict     String?  @db.Text
+  penalty     String?  @db.Text
+  status      CaseStatus @default(OPEN)
+  filedById   String
+  filedBy     User     @relation("FiledBy", fields: [filedById], references: [id], onDelete: Cascade)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String
+  type        AssetType
+  location    String
+  condition   AssetCondition @default(GOOD)
+  serialNumber String?
+  purchaseDate DateTime?
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  notes       String?  @db.Text
+  assignedTo  String?
+  status      AssetStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Poll {
+  id         String   @id @default(cuid())
+  title      String
+  description String? @db.Text
+  options    Json
+  category   PollCategory @default(GENERAL)
+  startsAt   DateTime
+  endsAt     DateTime
+  isActive   Boolean  @default(true)
+  createdById String
+  createdBy  User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  votes      Vote[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option    String
+  createdAt DateTime @default(now())
+
+  @@unique([pollId, userId])
+}
+
+model Complaint {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject     String
+  description String   @db.Text
+  category    ComplaintCategory @default(OTHER)
+  priority    Priority @default(MEDIUM)
+  status      ComplaintStatus @default(OPEN)
+  slaDeadline DateTime?
+  assignedTo  String?
+  resolution  String?  @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String   @db.Text
+  type      NotificationType
+  category  String?
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model ContiScore {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score     Int      @default(0)
+  level     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  transactions ScoreTransaction[]
+}
+
+model ScoreTransaction {
+  id        String   @id @default(cuid())
+  scoreId   String
+  score     ContiScore @relation(fields: [scoreId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  type      ScoreType @default(EARNED)
+  createdAt DateTime @default(now())
+}
+
+model FloorWar {
+  id         String   @id @default(cuid())
+  week       Int
+  year       Int
+  startDate  DateTime
+  endDate    DateTime
+  isActive   Boolean  @default(true)
+  entries    FloorWarEntry[]
+  createdAt  DateTime @default(now())
+}
+
+model FloorWarEntry {
+  id          String   @id @default(cuid())
+  warId       String
+  war         FloorWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  floor       String
+  block       Block
+  attendanceScore Int @default(0)
+  cleanlinessScore Int @default(0)
+  studyScore  Int      @default(0)
+  totalScore  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([warId, floor, block])
+}
+
+model StudyStreak {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  streak    Int      @default(0)
+  longest   Int      @default(0)
+  lastCheckIn DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmergencyHeadcount {
+  id        String   @id @default(cuid())
+  triggeredBy String
+  triggeredAt DateTime @default(now())
+  status    EmergencyStatus @default(ACTIVE)
+  responses EmergencyResponse[]
+}
+
+model EmergencyResponse {
+  id        String   @id @default(cuid())
+  headcountId String
+  headcount EmergencyHeadcount @relation(fields: [headcountId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    SafeStatus @default(SAFE)
+  location  String?
+  respondedAt DateTime @default(now())
+
+  @@unique([headcountId, userId])
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  type      VerificationType @default(EMAIL)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+enum HelpdeskCategory {
+  MAINTENANCE
+  ACADEMIC
+  ACCOMMODATION
+  SECURITY
+  DINING
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum SuggestionCategory {
+  FACILITIES
+  PROGRAMS
+  DINING
+  SECURITY
+  WELFARE
+  OTHER
+}
+
+enum SuggestionStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  IMPLEMENTED
+  DECLINED
+}
+
+enum LostFoundType {
+  LOST
+  FOUND
+}
+
+enum LostFoundStatus {
+  REPORTED
+  MATCHED
+  CLAIMED
+  CLOSED
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CONNECTED
+}
+
+enum ForumCategory {
+  GENERAL
+  ACADEMICS
+  EVENTS
+  SPORTS
+  ROOMMATE
+  LOST_FOUND
+  BUY_SELL
+  OTHER
+}
+
+enum CheckInStatus {
+  IN_HALL
+  OUT_HALL
+  ON_LEAVE
+}
+
+enum ExamType {
+  MAIN_EXAM
+  MID_SEM
+  QUIZ
+  ASSIGNMENT
+  OTHER
+}
+
+enum IncidentType {
+  THEFT
+  FIGHT
+  NOISE
+  VANDALISM
+  HARASSMENT
+  OTHER
+}
+
+enum IncidentStatus {
+  REPORTED
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum CaseStatus {
+  OPEN
+  HEARING_SCHEDULED
+  VERDICT_GIVEN
+  APPEALED
+  CLOSED
+}
+
+enum AssetType {
+  FURNITURE
+  ELECTRONICS
+  APPLIANCE
+  SPORTS_EQUIPMENT
+  VEHICLE
+  OTHER
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+  REPLACED
+}
+
+enum AssetStatus {
+  ACTIVE
+  IN_REPAIR
+  DECOMMISSIONED
+  LOST
+}
+
+enum PollCategory {
+  GENERAL
+  ELECTION
+  EVENT
+  DINING
+  FACILITIES
+}
+
+enum ComplaintCategory {
+  MAINTENANCE
+  NOISE
+  ROOMMATE
+  DINING
+  SECURITY
+  HARASSMENT
+  DISCRIMINATION
+  OTHER
+}
+
+enum ComplaintStatus {
+  OPEN
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+  REJECTED
+  APPEALED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+  ALERT
+}
+
+enum ScoreType {
+  EARNED
+  SPENT
+  LOST
+}
+
+enum EmergencyStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SafeStatus {
+  SAFE
+  IN_DANGER
+  UNRESPONDED
+}
+
+enum VerificationType {
+  EMAIL
+  PHONE
+  HALL_CODE
+}

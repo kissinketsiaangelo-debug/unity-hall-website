@@ -1,0 +1,9 @@
+export { Hero } from './Hero';
+export { AboutSection } from './AboutSection';
+export { FacilitiesSection } from './FacilitiesSection';
+export { TraditionsSection } from './TraditionsSection';
+export { RivalrySection } from './RivalrySection';
+export { AlumniSection } from './AlumniSection';
+export { NewsEventsSection } from './NewsEventsSection';
+export { AdmissionsSection } from './AdmissionsSection';
+export { GallerySection } from './GallerySection';
